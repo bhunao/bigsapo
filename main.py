@@ -97,8 +97,8 @@ def handle_isca(mouse_y: int):
         tongue.sprite = pygame.transform.scale(tongue.sprite, size)
 
         if isca.fish:
-            isca.fish.rect.top = isca.rect.bottom - 20
-            isca.fish.rect.centerx = isca.rect.centerx + 20
+            isca.fish.rect.top = isca.rect.bottom - 30
+            isca.fish.rect.centerx = isca.rect.centerx + 25
             if isca.rect.y <= 135:
                 entities[isca.fish.name].remove(isca.fish)
                 isca.fish = None
@@ -155,7 +155,7 @@ def create_if_less_than(n, name: str):
     else:
         entity.sprite = flip(entity.sprite, True, False)
         entity.rect.topleft = randint(
-            WINDOW_WIDTH, WINDOW_WIDTH+150), randint(150, WINDOW_HEIGHT)
+            WINDOW_WIDTH, WINDOW_WIDTH+150), randint(150, WINDOW_HEIGHT-50)
 
 
 looping = True
