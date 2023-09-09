@@ -3,7 +3,7 @@ import sys
 from random import randint
 from pygame.locals import *
 from pygame import image, Surface
-from pygame.transform import rotate
+from pygame.transform import rotate, flip
 from pygame.math import Vector2
 from typing import Dict, Set
 pygame.init()
@@ -28,6 +28,12 @@ PETER = image.load("imgs/INGHIA.png")
 FISH = image.load("imgs/goldfish.png")
 TONGUE_MIDDLE = image.load("imgs/tongue_middle.png")
 TONGUE_END = image.load("imgs/tongue_end.png")
+
+SPRITES = {
+    "fish": FISH,
+    "peter": PETER,
+    "snail": SNAIL,
+}
 
 catch_sound = pygame.mixer.Sound("imgs/jingles_SAX06.ogg")
 
@@ -100,7 +106,7 @@ def handle_isca(mouse_y: int):
 
 
 def handle_fish():
-    global entities
+    global entities, SPRITES
 
     to_remove = set()
 
@@ -113,9 +119,11 @@ def handle_fish():
                 to_remove.add(fish)
 
             if fishable and fish.rect.colliderect(isca) and not isca.fish:
-                fish.speed.x = 0
                 isca.fish = fish
-                fish.sprite = rotate(fish.sprite, 90)
+                fish.sprite = rotate(SPRITES[name], 90)
+                if fish.speed.x < 0:
+                    fish.sprite = flip(fish.sprite, True, False)
+                fish.speed.x = 0
                 catch_sound.play()
 
     pound_boundaries("fish", fishable=True)
@@ -139,8 +147,15 @@ def create_if_less_than(n, name: str):
             entity = Entity(SNAIL, "snail")
         case "peter":
             entity = Entity(PETER, "peter")
-    entity.rect.topright = randint(-100, 0), randint(150, WINDOW_HEIGHT)
-    entity.speed.x = randint(1, 2)
+    coisa = -1, 1
+    mult = coisa[randint(0, 1)]
+    entity.speed.x = randint(1, 2) * mult
+    if mult == 1:
+        entity.rect.topright = randint(-100, 0), randint(150, WINDOW_HEIGHT)
+    else:
+        entity.sprite = flip(entity.sprite, True, False)
+        entity.rect.topleft = randint(
+            WINDOW_WIDTH, WINDOW_WIDTH+150), randint(150, WINDOW_HEIGHT)
 
 
 looping = True
