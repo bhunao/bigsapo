@@ -10,6 +10,7 @@ pygame.init()
 
 # Colours
 BACKGROUND = (205, 163, 72)
+WATER = (31, 93, 255)
 
 # Game Setup
 FPS = 60
@@ -28,6 +29,8 @@ FISH = image.load("imgs/goldfish.png")
 TONGUE_MIDDLE = image.load("imgs/tongue_middle.png")
 TONGUE_END = image.load("imgs/tongue_end.png")
 
+catch_sound = pygame.mixer.Sound("imgs/jingles_SAX06.ogg")
+
 
 entities = dict()
 fish_caught = 0
@@ -43,6 +46,7 @@ class Entity:
         if not entities.get(name):
             entities[name] = {self}
         entities[name].add(self)
+        self.name = name
         self.sprite = sprite
         self.pos: Vector2 = Vector2(0, 0)
         self.rect = self.sprite.get_rect()
@@ -60,9 +64,6 @@ entities: Dict[str, Set[Entity]]
 
 frog = Entity(BIGSAPO, "frog")
 frog.rect.centerx = WINDOW_WIDTH // 2
-Entity(SNAIL, "snail")
-Entity(PETER, "peter")
-Entity(FISH, "fish")
 
 isca = Entity(TONGUE_END, "isca")
 isca.rect.centerx = WINDOW_WIDTH // 2 + 1
@@ -93,7 +94,7 @@ def handle_isca(mouse_y: int):
             isca.fish.rect.top = isca.rect.bottom - 20
             isca.fish.rect.centerx = isca.rect.centerx + 20
             if isca.rect.y <= 135:
-                entities["fish"].remove(isca.fish)
+                entities[isca.fish.name].remove(isca.fish)
                 isca.fish = None
                 fish_caught += 1
 
@@ -102,32 +103,44 @@ def handle_fish():
     global entities
 
     to_remove = set()
-    for fish in entities["fish"]:
-        fish_width = fish.rect.size[0]
-        too_far_right = fish.rect.left - fish_width*2 > WINDOW_WIDTH
-        too_far_left = fish.rect.right + fish_width*2 < 0
-        if too_far_right or too_far_left:
-            to_remove.add(fish)
 
-        if fish.rect.colliderect(isca) and not isca.fish:
-            fish.speed.x = 0
-            isca.fish = fish
-            fish.sprite = rotate(fish.sprite, 90)
-            print("PEIXE NA ISCA", isca.fish)
+    def pound_boundaries(name: str, fishable: bool = False):
+        for fish in entities[name]:
+            fish_width = fish.rect.size[0]
+            too_far_right = fish.rect.left - fish_width*2 > WINDOW_WIDTH
+            too_far_left = fish.rect.right + fish_width*2 < 0
+            if too_far_right or too_far_left:
+                to_remove.add(fish)
 
-    for fish in to_remove:
-        entities["fish"].remove(fish)
+            if fishable and fish.rect.colliderect(isca) and not isca.fish:
+                fish.speed.x = 0
+                isca.fish = fish
+                fish.sprite = rotate(fish.sprite, 90)
+                catch_sound.play()
+
+    pound_boundaries("fish", fishable=True)
+    pound_boundaries("snail", fishable=True)
+    pound_boundaries("peter")
+
+    for entity in to_remove:
+        entities[entity.name].remove(entity)
 
 
-def create_fish_if_less_than_n(n):
+def create_if_less_than(n, name: str):
     global entities
-    total_fish = len(entities["fish"])
-    if total_fish >= n:
+    total_entity = len(entities.get(name, []))
+    if total_entity >= n:
         return
 
-    fish = Entity(FISH, "fish")
-    fish.rect.topright = randint(-100, 0), randint(100, WINDOW_HEIGHT)
-    fish.speed.x = randint(1, 2)
+    match name:
+        case "fish":
+            entity = Entity(FISH, "fish")
+        case "snail":
+            entity = Entity(SNAIL, "snail")
+        case "peter":
+            entity = Entity(PETER, "peter")
+    entity.rect.topright = randint(-100, 0), randint(150, WINDOW_HEIGHT)
+    entity.speed.x = randint(1, 2)
 
 
 looping = True
@@ -137,6 +150,9 @@ my_font = pygame.font.SysFont('Arial', 30)
 def frame():
     # The main game loop
     WINDOW.fill(BACKGROUND)
+    water = Surface((WINDOW_WIDTH, WINDOW_HEIGHT-110))
+    water.fill(WATER)
+    WINDOW.blit(water, (0, 110))
     # Get inputs
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -159,8 +175,18 @@ def frame():
     text_surface = my_font.render(f"{fish_caught}", False, (0, 0, 0))
     WINDOW.blit(text_surface, (700, 0))
     handle_isca(mouse_y)
-    create_fish_if_less_than_n(10)
+    create_if_less_than(10, "fish")
+    create_if_less_than(3, "peter")
+    create_if_less_than(1, "snail")
     handle_fish()
+
+    fog = Surface((WINDOW_WIDTH, WINDOW_HEIGHT-110))
+    fog.fill(WATER)
+    fog.set_alpha(128)
+    WINDOW.blit(fog, (0, 110))
+
+    frog.draw(WINDOW)
+
     # Render elements of the game
     pygame.display.update()
     fpsClock.tick(FPS)
