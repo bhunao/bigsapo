@@ -5,21 +5,21 @@ from pygame.locals import *
 from pygame import image, Surface
 from pygame.transform import rotate, flip, scale
 from pygame.math import Vector2
-from pygame.time import get_ticks
 from typing import Dict, Set
 from math import sin
 
 
-def get_outline(image, color=(0,0,0), threshold=127, thick=1):
-    mask = pygame.mask.from_surface(image,threshold)
+def get_outline(image, color=(0, 0, 0), threshold=127, thick=1):
+    mask = pygame.mask.from_surface(image, threshold)
     outline_image = Surface(image.get_size()).convert_alpha()
-    outline_image.fill((0,0,0,0))
+    outline_image.fill((0, 0, 0, 0))
     outline_image.set_alpha(128)
-    points = []
-    for i, point in enumerate(mask.outline()):
-        if i % 15 == 0:
-            point = point[0] + randint(-2, 2), point[1] + randint(-2, 2)
-            points.append(point)
+    points = mask.outline()
+    for i in range(0, len(points), 15):
+        points.append((
+            points[i][0] + randint(-2, 2),
+            points[i][1] + randint(-2, 2)
+        ))
     pygame.draw.lines(outline_image, color, True, points, 2*thick)
     pygame.draw.lines(outline_image, (0, 255, 255), True, points, thick)
     return outline_image
@@ -85,6 +85,8 @@ SPRITES = {
 }
 
 catch_sound = pygame.mixer.Sound("imgs/jingles_SAX06.ogg")
+fail_sound = pygame.mixer.Sound("imgs/highDown.ogg")
+good_sound = pygame.mixer.Sound("imgs/powerUp2.ogg")
 
 
 entities = dict()
@@ -109,7 +111,7 @@ class Entity:
         self.sprite = sprite
         self.pos: Vector2 = Vector2(0, 0)
         self.speed: Vector2 = Vector2(0, 0)
-        self.rect = self.sprite[0].get_rect() 
+        self.rect = self.sprite[0].get_rect()
 
     def draw(self, window: Surface):
         frames = 5 // self.speed.x if self.speed.x else 1
@@ -182,6 +184,7 @@ def handle_isca(mouse_y: int):
             if isca.rect.y <= frog_bottom_plus_tongue:
                 entities[isca.fish.name].remove(isca.fish)
                 isca.fish = None
+                catch_sound.play()
                 fish_caught += 1
 
 
@@ -205,13 +208,13 @@ def handle_fish():
                     if fish.speed.x < 0:
                         fish.sprite = [flip(f, True, False) for f in fish.sprite]
                     fish.speed.x = 0
-                    catch_sound.play()
+                    good_sound.play()
                 elif not frog.shocked and not fishable:
                     frog.shocked = 50
+                    fail_sound.play()
                     if isca.fish:
                         to_remove.add(isca.fish)
                         isca.fish = None
-
 
     pound_boundaries("fish", fishable=True)
     pound_boundaries("snail", fishable=True)
@@ -239,7 +242,7 @@ def create_if_less_than(n, name: str):
     mult = coisa[randint(0, 1)]
     entity.speed.x = randint(1, 3) * mult
     if mult == 1:
-        entity.rect.topright = randint(-100, 0), randint(frog_bottom +30, WINDOW_HEIGHT)
+        entity.rect.topright = randint(-100, 0), randint(frog_bottom + 30, WINDOW_HEIGHT)
     else:
         entity.sprite = [flip(f, True, False) for f in entity.sprite]
         entity.rect.topleft = randint(
@@ -291,7 +294,6 @@ def frame():
 
     handle_isca(mouse_y)
     handle_fish()
-
 
     fog.set_alpha(64)
     WINDOW.blit(fog, (0, frog_bottom))
